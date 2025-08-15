@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, in0"/>
+<title>OASIS – Discover & Torrents</title>
+
+<style>
+  :root{
+    --bg:#0f0f10;--panel:#16171a;--panel-2:#1c1d21;--text:#e9eaee;--muted:#9aa1ac;
+    --accent:#ff4d4d;--accent-2:#ff934d;--star:#f5c518;--ok:#22c55e;--warn:#f59e0b;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#101113,#0d0e10 60%);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+  header{position:sticky;top:0;z-index:20;background:rgba(13,14,16,.85);backdrop-filter:blur(8px);border-bottom:1px solid #222;display:flex;align-items:center;gap:12px;padding:12px 16px}
+  .brand{font-weight:800;letter-spacing:.3px}
+  .pill{display:inline-flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid #26272b;border-radius:999px;padding:6px 10px}
+  nav{margin-left:auto;display:flex;gap:6px}
+  nav button{background:transparent;border:1px solid #2a2b30;color:var(--text);padding:8px 12px;border-radius:10px;cursor:pointer}
+  nav button.active{background:var(--panel-2);border-color:#3a3b42}
+  main{max-width:1200px;margin:0 auto;padding:18px 16px 60px}
+  .section{margin-top:18px}
+  .section h2{margin:0 0 12px;font-size:1.1rem;color:#fff}
+  .row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .card{background:var(--panel);border:1px solid #26272b;border-radius:var(--radius);overflow:hidden;transition:transform .15s ease, box-shadow .15s ease;cursor:pointer}
+  .card:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .poster{width:100%;aspect-ratio:2/3;object-fit:cover;background:#111}
+  .meta{padding:10px}
+  .title{font-size:.95rem;line-height:1.2;margin:0 0 6px}
+  .sub{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted)}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:.75rem;background:#1d2026;border:1px solid #2b2e36;border-radius:999px;padding:2px 8px}
+  .stars{color:var(--star)}
+  /* Tabs */
+  .tabs{display:none}
+  .tabs.active{display:block}
+  /* Search bar */
+  .searchbar{display:flex;gap:8px;margin:10px 0}
+  .searchbar input{flex:1;background:var(--panel);border:1px solid #2a2b30;color:var(--text);padding:10px 12px;border-radius:10px;outline:none}
+  .searchbar button{background:linear-gradient(90deg,var(--accent),var(--accent-2));border:none;color:#fff;padding:10px 14px;border-radius:10px;cursor:pointer}
+  /* Results cards (torrents) */
+  .t-card{background:var(--panel);border:1px solid #26272b;border-radius:12px;padding:12px;display:flex;gap:10px;align-items:flex-start}
+  .t-title{margin:0 0 4px;font-size:.98rem}
+  .t-size{color:var(--muted);font-size:.82rem}
+  .t-actions{margin-top:8px;display:flex;gap:8px}
+  .btn{border:none;border-radius:10px;padding:8px 10px;cursor:pointer}
+  .btn.primary{background:linear-gradient(90deg,#00b894,#00d1b2);color:#051312}
+  .btn.secondary{background:#22252c;color:#eaeef5;border:1px solid #31343c}
+  /* Player overlay */
+  #playerOverlay{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;flex-direction:column;padding:10px;z-index:100}
+  #playerOverlay video,#playerOverlay iframe{width:min(1100px,96vw);height:min(62vw,70vh);background:black;border-radius:14px;border:1px solid #2b2b2b;box-shadow:0 20px 70px rgba(0,0,0,.6)}
+  #playerClose{margin-top:10px;background:var(--accent);border:none;color:white;padding:10px 14px;border-radius:10px;cursor:pointer}
+  /* Skeleton */
+  .skeleton{background:linear-gradient(90deg,#1a1c20 25%,#262931 37%,#1a1c20 63%);background-size:400% 100%;animation:sheen 1.2s infinite}
+  @keyframes sheen{0%{background-position:100% 0}100%{background-position:-100% 0}}
+  .s-card{height:260px;border-radius:var(--radius)}
+  /* Modal (details) */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.8);z-index:90}
+  .modal>div{background:#0f1115;border:1px solid #2d2f36;border-radius:14px;max-width:900px;width:92vw;display:grid;grid-template-columns:220px 1fr;gap:14px;padding:14px}
+  .modal img{width:100%;height:auto;border-radius:10px}
+  .modal h3{margin:0 0 6px}
+  .modal .overview{color:#cfd3dc;font-size:.95rem;line-height:1.5}
+  .modal .chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+  .chip{background:#1c2026;border:1px solid #2b2f37;border-radius:999px;font-size:.75rem;padding:3px 8px;color:#c3cad6}
+  .modal .actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .modal .actions .btn{padding:10px 12px}
+  @media (max-width:720px){ .modal>div{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand pill">🎬 OASIS</div>
+    <div class="pill">Discover</div>
+    <nav>
+      <button id="tabDiscoverBtn" class="active">Discover</button>
+      <button id="tabTorrentsBtn">Torrents</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Discover tab -->
+    <section id="tabDiscover" class="tabs active">
+      <div class="section">
+        <h2>🔥 Trending Today</h2>
+        <div id="gridTrending" class="row"></div>
+      </div>
+      <div class="section">
+        <h2>🎟️ Now Playing (Movies)</h2>
+        <div id="gridNowPlaying" class="row"></div>
+      </div>
+      <div class="section">
+        <h2>✨ Animation</h2>
+        <div id="gridAnimation" class="row"></div>
+      </div>
+      <div class="section">
+        <h2>🍣 Anime (JP Animation)</h2>
+        <div id="gridAnime" class="row"></div>
+      </div>
+    </section>
+
+    <!-- Torrents tab -->
+    <section id="tabTorrents" class="tabs">
+      <div class="searchbar">
+        <input id="searchInput" placeholder="Search torrents (movie name)…" />
+        <button id="searchBtn">Search</button>
+      </div>
+      <div id="results" class="section"></div>
+    </section>
+  </main>
+
+  <!-- Player overlay (video or trailer) -->
+  <div id="playerOverlay">
+    <video id="videoPlayer" controls playsinline></video>
+    <iframe id="ytFrame" src="" title="Trailer" style="display:none" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    <button id="playerClose">Close</button>
+  </div>
+
+  <!-- Details modal -->
+  <div id="detailsModal" class="modal" role="dialog" aria-modal="true">
+    <div>
+      <img id="detailsPoster" alt="Poster" />
+      <div>
+        <h3 id="detailsTitle">Title</h3>
+        <div class="chips" id="detailsChips"></div>
+        <div class="badge"><span class="stars">★</span> <span id="detailsRate">0.0</span> / 10</div>
+        <p class="overview" id="detailsOverview"></p>
+        <div class="actions">
+          <button class="btn primary" id="trailerBtn">Play Trailer</button>
+          <button class="btn secondary" id="closeDetailsBtn">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ====== CONFIG ====== */
+const TMDB_API_KEY = 'b492ccc669864b0f4df2aafe0485b8af'; // <<< REPLACE THIS
+const TMDB = 'https://api.themoviedb.org/3';
+const IMG = 'https://image.tmdb.org/t/p/w500';
+const API_BASE = 'http://localhost:3000'; // your torrent backend
+
+/* ====== TABS ====== */
+const tabDiscoverBtn = document.getElementById('tabDiscoverBtn');
+const tabTorrentsBtn = document.getElementById('tabTorrentsBtn');
+const tabDiscover = document.getElementById('tabDiscover');
+const tabTorrents = document.getElementById('tabTorrents');
+
+tabDiscoverBtn.onclick = () => { tabDiscoverBtn.classList.add('active'); tabTorrentsBtn.classList.remove('active'); tabDiscover.classList.add('active'); tabTorrents.classList.remove('active'); };
+tabTorrentsBtn.onclick = () => { tabTorrentsBtn.classList.add('active'); tabDiscoverBtn.classList.remove('active'); tabTorrents.classList.add('active'); tabDiscover.classList.remove('active'); };
+
+/* ====== HELPERS ====== */
+const gridTrending = document.getElementById('gridTrending');
+const gridNowPlaying = document.getElementById('gridNowPlaying');
+const gridAnimation = document.getElementById('gridAnimation');
+const gridAnime = document.getElementById('gridAnime');
+
+function skeleton(container, count=10){
+  container.innerHTML = '';
+  for(let i=0;i<count;i++){
+    const sk = document.createElement('div');
+    sk.className = 's-card skeleton';
+    container.appendChild(sk);
+  }
+}
+
+function cardTemplate(item){
+  const title = item.title || item.name || 'Untitled';
+  const year = (item.release_date || item.first_air_date || '').slice(0,4);
+  const rating = (item.vote_average ?? 0).toFixed(1);
+  const poster = item.poster_path ? `${IMG}${item.poster_path}` : 'https://via.placeholder.com/400x600?text=No+Image';
+  return `
+    <div class="card" data-type="${item.media_type||'movie'}" data-id="${item.id}">
+      <img src="${poster}" alt="${title}" class="poster" loading="lazy" />
+      <div class="meta">
+        <h3 class="title">${title}</h3>
+        <div class="sub">
+          <span class="badge"><span class="stars">★</span> ${rating}</span>
+          <span>${year || ''}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function tmdb(path, params = {}){
+  const url = new URL(`${TMDB}${path}`);
+  url.searchParams.set('api_key', TMDB_API_KEY);
+  for(const [k,v] of Object.entries(params)) url.searchParams.set(k, v);
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('TMDB error');
+  return res.json();
+}
+
+function renderList(container, items){
+  container.innerHTML = items.map(cardTemplate).join('');
+  // Click to open details modal
+  container.querySelectorAll('.card').forEach(el=>{
+    el.addEventListener('click', ()=>openDetails(el.dataset.type, el.dataset.id));
+  });
+}
+
+/* ====== LOAD DISCOVER FEEDS ====== */
+async function loadDiscover(){
+  // Trending
+  skeleton(gridTrending);
+  tmdb('/trending/all/day')
+    .then(d=>renderList(gridTrending, d.results || []))
+    .catch(()=>gridTrending.innerHTML='<p>Failed to load.</p>');
+
+  // Now playing movies
+  skeleton(gridNowPlaying);
+  tmdb('/movie/now_playing', { region:'US', page:1 })
+    .then(d=>renderList(gridNowPlaying, d.results || []))
+    .catch(()=>gridNowPlaying.innerHTML='<p>Failed to load.</p>');
+
+  // Animation (any language)
+  skeleton(gridAnimation);
+  tmdb('/discover/movie', { with_genres:'16', sort_by:'popularity.desc', page:1 })
+    .then(d=>renderList(gridAnimation, d.results || []))
+    .catch(()=>gridAnimation.innerHTML='<p>Failed to load.</p>');
+
+  // Anime = Animation + Japanese originals
+  skeleton(gridAnime);
+  tmdb('/discover/movie', { with_genres:'16', with_original_language:'ja', sort_by:'popularity.desc', page:1 })
+    .then(d=>renderList(gridAnime, d.results || []))
+    .catch(()=>gridAnime.innerHTML='<p>Failed to load.</p>');
+}
+loadDiscover();
+
+/* ====== DETAILS MODAL ====== */
+const detailsModal = document.getElementById('detailsModal');
+const detailsPoster = document.getElementById('detailsPoster');
+const detailsTitle = document.getElementById('detailsTitle');
+const detailsChips = document.getElementById('detailsChips');
+const detailsOverview = document.getElementById('detailsOverview');
+const detailsRate = document.getElementById('detailsRate');
+const closeDetailsBtn = document.getElementById('closeDetailsBtn');
+const trailerBtn = document.getElementById('trailerBtn');
+
+let currentDetails = null;
+
+async function openDetails(type, id){
+  try{
+    const path = type === 'tv' ? `/tv/${id}` : `/movie/${id}`;
+    const data = await tmdb(path, { append_to_response:'videos' });
+    currentDetails = { type, data };
+    const poster = data.poster_path ? `${IMG}${data.poster_path}` : 'https://via.placeholder.com/400x600?text=No+Image';
+    detailsPoster.src = poster;
+    detailsTitle.textContent = data.title || data.name || 'Untitled';
+    detailsRate.textContent = (data.vote_average ?? 0).toFixed(1);
+    detailsOverview.textContent = data.overview || 'No overview available.';
+    detailsChips.innerHTML = '';
+    const year = (data.release_date || data.first_air_date || '').slice(0,4);
+    if (year) detailsChips.insertAdjacentHTML('beforeend', `<span class="chip">${year}</span>`);
+    if (data.runtime) detailsChips.insertAdjacentHTML('beforeend', `<span class="chip">${data.runtime} min</span>`);
+    if (data.genres) data.genres.forEach(g=>detailsChips.insertAdjacentHTML('beforeend', `<span class="chip">${g.name}</span>`));
+    // trailer availability
+    const yt = (data.videos?.results||[]).find(v=>v.site==='YouTube' && v.type==='Trailer');
+    trailerBtn.style.display = yt ? 'inline-flex' : 'none';
+    trailerBtn.onclick = ()=> playTrailer(yt.key);
+    detailsModal.style.display = 'flex';
+  }catch(e){
+    alert('Failed to load details.');
+  }
+}
+closeDetailsBtn.onclick = ()=> detailsModal.style.display='none';
+detailsModal.addEventListener('click', (e)=>{ if(e.target===detailsModal) detailsModal.style.display='none'; });
+
+/* ====== TRAILER / PLAYER OVERLAY ====== */
+const overlay = document.getElementById('playerOverlay');
+const vPlayer = document.getElementById('videoPlayer');
+const ytFrame = document.getElementById('ytFrame');
+document.getElementById('playerClose').onclick = closeOverlay;
+
+function playTrailer(youtubeKey){
+  vPlayer.pause(); vPlayer.src=''; vPlayer.style.display='none';
+  ytFrame.style.display='block';
+  ytFrame.src = `https://www.youtube.com/embed/${youtubeKey}?autoplay=1&rel=0`;
+  overlay.style.display='flex';
+}
+function closeOverlay(){
+  overlay.style.display='none';
+  vPlayer.pause(); vPlayer.src='';
+  ytFrame.src=''; ytFrame.style.display='none';
+}
+
+/* ====== TORRENT SEARCH (uses your backend) ====== */
+const resultsDiv = document.getElementById('results');
+const searchInput = document.getElementById('searchInput');
+document.getElementById('searchBtn').onclick = searchTorrents;
+
+async function searchTorrents(){
+  const q = searchInput.value.trim();
+  if(!q) { alert('Enter a search term.'); return; }
+  resultsDiv.innerHTML = '<p class="muted">Searching…</p>';
+  try{
+    const res = await fetch(`${API_BASE}/torrents?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    if(!data.results || data.results.length===0){
+      resultsDiv.innerHTML = '<p>No torrents found.</p>'; return;
+    }
+    resultsDiv.innerHTML = '';
+    data.results.forEach(t=>{
+      const el = document.createElement('div');
+      el.className='t-card';
+      el.innerHTML = `
+        <div style="flex:1">
+          <h4 class="t-title">${t.name}</h4>
+          <div class="t-size">${t.size || ''}</div>
+          <div class="t-actions">
+            <button class="btn primary">Download</button>
+            <button class="btn secondary">Stream</button>
+          </div>
+        </div>
+      `;
+      const [btnDown, btnStream] = el.querySelectorAll('.btn');
+      btnDown.onclick = ()=> window.location.href = t.magnet; // uses user's client/storage
+      btnStream.onclick = ()=> streamViaServer(t.magnet);
+      resultsDiv.appendChild(el);
+    });
+  }catch(e){
+    resultsDiv.innerHTML = '<p>Failed to fetch results.</p>';
+  }
+}
+
+function streamViaServer(magnet){
+  // Stream from your Node backend (WebTorrent piping) to the <video>
+  ytFrame.src=''; ytFrame.style.display='none';
+  vPlayer.style.display='block';
+  vPlayer.src = `${API_BASE}/stream?magnet=${encodeURIComponent(magnet)}`;
+  overlay.style.display='flex';
+}
+</script>
+<script src="main.js"></script>
+</body>
+</html>
